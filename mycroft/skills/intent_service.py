@@ -179,6 +179,12 @@ class IntentService(object):
 
     def get_intent(self, utterance, lang="en-us"):
         best_intent = None
+
+        if isinstance(utterance, list):
+            utterances = utterance
+        else:
+            utterances = [utterance]
+
         for utterance in utterances:
             try:
                 # normalize() changes "it's a boy" to "it is boy", etc.
@@ -195,6 +201,10 @@ class IntentService(object):
                 LOG.exception(e)
                 continue
 
+        if best_intent and best_intent.get('confidence', 0.0) > 0.0:
+            return best_intent
+        else:
+            return None
 
     def reset_converse(self, message):
         """Let skills know there was a problem with speech recognition"""
@@ -360,7 +370,7 @@ class IntentService(object):
             Intent structure, or None if no match was found.
         """
         best_intent = self.get_intent(utterances, lang)
-        if best_intent and best_intent.get('confidence', 0.0) > 0.0:
+        if best_intent:
             self.update_context(best_intent)
             # update active skills
             skill_id = int(best_intent['intent_type'].split(":")[0])
