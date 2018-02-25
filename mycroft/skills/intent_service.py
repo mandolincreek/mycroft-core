@@ -152,6 +152,7 @@ class IntentService(object):
         self.emitter.on('mycroft.speech.recognition.unknown',
                         self.reset_converse)
         self.emitter.on('mycroft.skills.loaded', self.update_skill_name_dict)
+        self.emitter.on("mycroft.skills.shutdown", self.handle_skill_shutdown)
         self.emitter.on("mycroft.skills.manifest", self.handle_skill_manifest)
 
         def add_active_skill_handler(message):
@@ -177,6 +178,13 @@ class IntentService(object):
             (str) Skill name or the skill id if the skill wasn't found
         """
         return self.skill_names.get(int(skill_id), skill_id)
+
+    def handle_skill_shutdown(self, message):
+	LOG.info("%s: shutdown" % skill.skill_names[skill_id])
+	LOG.error("wtf")
+        skill_id = message.data["id"]
+        del(self.skill_names[skill_id])
+        del(self.intent_map[skill_id])
 
     def handle_skill_manifest(self, message):
         self.emitter.emit(message.reply("mycroft.skills.manifest.response",
