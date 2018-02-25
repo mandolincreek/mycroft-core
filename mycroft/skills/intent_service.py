@@ -130,6 +130,7 @@ class IntentService(object):
 
         # Dictionary for translating a skill id to a name
         self.skill_names = {}
+        self.intent_map = {}
         # Context related intializations
         self.context_keywords = self.config.get('keywords', [])
         self.context_max_frames = self.config.get('max_frames', 3)
@@ -154,6 +155,8 @@ class IntentService(object):
         self.emitter.on('mycroft.skills.loaded', self.update_skill_name_dict)
         self.emitter.on("mycroft.skills.shutdown", self.handle_skill_shutdown)
         self.emitter.on("mycroft.skills.manifest", self.handle_skill_manifest)
+        self.emitter.on("mycroft.intent.manifest", self.handle_intent_manifest)
+        self.emitter.on("mycroft.intent.get", self.handle_intent_get)
 
         def add_active_skill_handler(message):
             self.add_active_skill(message.data['skill_id'])
@@ -189,6 +192,18 @@ class IntentService(object):
     def handle_skill_manifest(self, message):
         self.emitter.emit(message.reply("mycroft.skills.manifest.response",
                           self.skill_names))
+
+    def handle_intent_manifest(self, message):
+        self.emitter.emit(message.reply("mycroft.intent.manifest.response",
+                          self.intent_map))
+
+    def handle_intent_get(self, message):
+        utterance = message.data.get("utterance", "")
+        lang = message.data.get("lang", "en-us")
+        intent = self.get_intent(utterance, lang)
+        self.emitter.emit(message.reply("mycroft.intent.response",
+                          {"utterance": utterance,
+                           "intent_data": intent}))
 
     def get_intent(self, utterance, lang="en-us"):
         best_intent = None
@@ -404,12 +419,18 @@ class IntentService(object):
     def handle_register_intent(self, message):
         intent = open_intent_envelope(message)
         self.engine.register_intent_parser(intent)
+        skill_id, intent = message.data.get("name").split(":")
+        if skill_id not in self.intent_map:
+            self.intent_map[skill_id] = []
+        self.intent_map[skill_id].append(intent)
 
     def handle_detach_intent(self, message):
         intent_name = message.data.get('intent_name')
         new_parsers = [
             p for p in self.engine.intent_parsers if p.name != intent_name]
         self.engine.intent_parsers = new_parsers
+        skill_id, intent = intent_name.split(":")
+        self.intent_map[skill_id].pop(intent)
 
     def handle_detach_skill(self, message):
         skill_id = message.data.get('skill_id')
