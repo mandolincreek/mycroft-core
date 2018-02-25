@@ -131,6 +131,7 @@ class IntentService(object):
         # Dictionary for translating a skill id to a name
         self.skill_names = {}
         self.intent_map = {}
+        self.vocab_map = {}
         # Context related intializations
         self.context_keywords = self.config.get('keywords', [])
         self.context_max_frames = self.config.get('max_frames', 3)
@@ -157,6 +158,7 @@ class IntentService(object):
         self.emitter.on("mycroft.skills.manifest", self.handle_skill_manifest)
         self.emitter.on("mycroft.intent.manifest", self.handle_intent_manifest)
         self.emitter.on("mycroft.intent.get", self.handle_intent_get)
+        self.emitter.on("mycroft.vocab.manifest", self.handle_vocab_manifest)
 
         def add_active_skill_handler(message):
             self.add_active_skill(message.data['skill_id'])
@@ -192,6 +194,10 @@ class IntentService(object):
     def handle_skill_manifest(self, message):
         self.emitter.emit(message.reply("mycroft.skills.manifest.response",
                           self.skill_names))
+
+    def handle_vocab_manifest(self, message):
+        self.emitter.emit(message.reply("mycroft.vocab.manifest.response",
+                          self.vocab_map))
 
     def handle_intent_manifest(self, message):
         self.emitter.emit(message.reply("mycroft.intent.manifest.response",
@@ -413,6 +419,8 @@ class IntentService(object):
         if regex_str:
             self.engine.register_regex_entity(regex_str)
         else:
+            if start_concept:
+                self.vocab_map[start_concept] = end_concept
             self.engine.register_entity(
                 start_concept, end_concept, alias_of=alias_of)
 
